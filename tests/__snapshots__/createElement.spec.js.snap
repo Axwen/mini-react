@@ -1,0 +1,33 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createElement > should create a div element > 
+            {
+              "props": {
+                "children": [
+                    {
+                        "props":{
+                            "children":[],
+                            "nodeValue": "Hello, world!",
+                        },
+                        "type": "TEXT_ELEMENT",
+                    }
+                ],
+              },
+              "type": "div",
+            }
+         1`] = `
+{
+  "props": {
+    "children": [
+      {
+        "props": {
+          "children": [],
+          "nodeValue": "Hello, world!",
+        },
+        "type": "TEXT_ELEMENT",
+      },
+    ],
+  },
+  "type": "div",
+}
+`;
