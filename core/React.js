@@ -15,21 +15,22 @@ function createElement(type, props, ...children) {
         props: {
             ...props,
             children: children.map(child => {
-                return typeof child === 'string' ? createTextNode(child) : child
+                const isTextNode = ['string', 'number'].includes(typeof child)
+                return isTextNode ? createTextNode(child) : child
             })
         }
     }
 }
 
 function render(el, container) {
-    nextWorkOfUnit = {
+    nextWorkOfUnit = root = {
         dom: container,
         props: {
             children: [el]
         }
     }
 }
-
+let root = null
 let nextWorkOfUnit = null
 function workLoop(deadline) {
     let shouldYield = false
@@ -37,23 +38,63 @@ function workLoop(deadline) {
         nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit)
         shouldYield = deadline.timeRemaining() < 1
     }
+
+
+    if (!nextWorkOfUnit && root) {
+        commitRoot()
+    }
+
     requestIdleCallback(workLoop)
+}
+function commitRoot() {
+    commitWork(root.child)
+    root = null
+}
+function commitWork(fiber) {
+    if (!fiber) {
+        return
+    }
+
+    let fiberReturn = fiber.return
+    while (!fiberReturn.dom) {
+        fiberReturn = fiberReturn.return
+    }
+    if (fiber.dom) {
+        fiberReturn.dom.append(fiber.dom)
+    }
+    commitWork(fiber.child)
+    commitWork(fiber.sibling)
 }
 
 function createDom(type) {
     return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type)
 }
 
-function updateProps(dom, props) {
+function updateProps(dom, props = {}) {
     Object.keys(props).forEach(key => {
         if (key !== 'children') {
             dom[key] = props[key]
         }
     })
 }
+function updateFunctionComponent(fiber) {
+    const { type, props } = fiber
+    const children = [type(props)]
+    initChildren(fiber, children)
+}
 
-function initChildren(fiber) {
-    const children = fiber.props.children
+function updateHostComponent(fiber) {
+    const { type, props, dom } = fiber
+    if (!dom) {
+        const dom = (fiber.dom) = createDom(type)
+
+        updateProps(dom, props)
+    }
+    const children = props?.children
+    initChildren(fiber, children)
+}
+
+function initChildren(fiber, children = []) {
     let prevChild = null
     children.forEach((child, index) => {
         const newfilber = {
@@ -73,24 +114,29 @@ function initChildren(fiber) {
     })
 }
 
+
+
 function performWorkOfUnit(fiber) {
-    const { type, props, dom } = fiber
-    if (!dom) {
-        const dom = (fiber.dom) = createDom(type)
-        fiber.return.dom.append(dom)
-        updateProps(dom, props)
+    const { type } = fiber
+    const isFunctionComponent = typeof type === 'function'
+
+    if (isFunctionComponent) {
+        updateFunctionComponent(fiber)
+    } else {
+        updateHostComponent(fiber)
     }
 
-    initChildren(fiber)
-    // 4. 返回下一个要执行的任务
     if (fiber.child) {
         return fiber.child
     }
-    if (fiber.sibling) {
-        return fiber.sibling
-    }
 
-    return fiber.return?.sibling
+    let nextFiber = fiber
+    while (nextFiber) {
+        if (nextFiber.sibling) {
+            return nextFiber.sibling
+        }
+        nextFiber = nextFiber.return
+    }
 }
 requestIdleCallback(workLoop)
 
