@@ -22,6 +22,11 @@ function createElement(type, props, ...children) {
     }
 }
 
+function createDom(type) {
+    return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type)
+}
+
+
 function render(el, container) {
     nextWorkOfUnit = wipRoot = {
         dom: container,
@@ -31,22 +36,30 @@ function render(el, container) {
     }
 }
 function update() {
-    wipRoot = {
-        dom: currentRoot.dom,
-        props: currentRoot.props,
-        alternate: currentRoot
+    const currentFiber = wipFiber
+    return () => {
+        console.log('currentFiber', currentFiber)
+        wipRoot = {
+            ...currentFiber,
+            alternate: currentFiber
+        }
+        nextWorkOfUnit = wipRoot
     }
-    nextWorkOfUnit = wipRoot
 }
 
 // work in progress
 let wipRoot = null
-let currentRoot = null
 let nextWorkOfUnit = null
+let deletions = []
+let wipFiber = null
 function workLoop(deadline) {
     let shouldYield = false
     while (!shouldYield && nextWorkOfUnit) {
         nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit)
+        if(wipRoot?.sibling?.type === nextWorkOfUnit?.type){
+            console.log('hit',wipRoot,nextWorkOfUnit)
+            nextWorkOfUnit = undefined
+        }
         shouldYield = deadline.timeRemaining() < 1
     }
 
@@ -58,9 +71,10 @@ function workLoop(deadline) {
     requestIdleCallback(workLoop)
 }
 function commitRoot() {
+    deletions.forEach(commitDeletion)
     commitWork(wipRoot.child)
-    currentRoot = wipRoot
     wipRoot = null
+    deletions = []
 }
 function commitWork(fiber) {
     if (!fiber) {
@@ -84,8 +98,17 @@ function commitWork(fiber) {
     commitWork(fiber.sibling)
 }
 
-function createDom(type) {
-    return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type)
+function commitDeletion(fiber) {
+    if (fiber.dom) {
+        let fiberReturn = fiber.return
+        while (!fiberReturn.dom) {
+            fiberReturn = fiberReturn.return
+        }
+        fiberReturn.dom.removeChild(fiber.dom)
+    } else {
+        commitDeletion(fiber.child)
+    }
+
 }
 
 function updateProps(dom, props = {}, oldProps = {}) {
@@ -106,7 +129,6 @@ function updateProps(dom, props = {}, oldProps = {}) {
                     dom.removeEventListener(event, oldProps[key])
                     dom.addEventListener(event, props[key])
                 } else {
-                    console.log(dom, key, props[key])
                     dom[key] = props[key]
                 }
             }
@@ -115,6 +137,7 @@ function updateProps(dom, props = {}, oldProps = {}) {
     })
 }
 function updateFunctionComponent(fiber) {
+    wipFiber = fiber
     const { type, props } = fiber
     const children = [type(props)]
     reconcileChildren(fiber, children)
@@ -149,16 +172,22 @@ function reconcileChildren(fiber, children = []) {
                 effectTag: 'UPDATE'
             }
         } else {
-            newfilber = {
-                type: child.type,
-                props: child.props,
-                child: null,
-                return: fiber,
-                sibling: null,
-                dom: null,
-                effectTag: 'PLACEMENT'
+            if (child) {
+                newfilber = {
+                    type: child.type,
+                    props: child.props,
+                    child: null,
+                    return: fiber,
+                    sibling: null,
+                    dom: null,
+                    effectTag: 'PLACEMENT'
+                }
+            }
+            if (oldFiber) {
+                deletions.push(oldFiber)
             }
         }
+
         // 更新旧的fiber
         if (oldFiber) {
             oldFiber = oldFiber.sibling
@@ -168,8 +197,14 @@ function reconcileChildren(fiber, children = []) {
         } else {
             prevChild.sibling = newfilber
         }
-        prevChild = newfilber
+        if (newfilber) {
+            prevChild = newfilber
+        }
     })
+    while (oldFiber) {
+        deletions.push(oldFiber)
+        oldFiber = oldFiber.sibling
+    }
 }
 
 function performWorkOfUnit(fiber) {

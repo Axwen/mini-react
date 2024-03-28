@@ -1,32 +1,53 @@
 import React from "./core/React";
 
-let count = 1;
-let props = { id: 123 };
-function Counter() {
+let count1 = 1;
+let count2 = 2;
+
+function Counter1() {
+	console.log("Counter1 update");
+	const update = React.update();
 	function handleClick() {
-		count++;
-		props = {};
-		console.log(props);
-		React.update();
+		count1++;
+		update();
 	}
 	return (
-		<div {...props}>
-			count: {count}
-			<button onClick={handleClick}>click</button>
+		<div>
+			<div>
+				Counter1 - {count1} - <button onClick={handleClick}>click</button>
+			</div>
 		</div>
 	);
 }
-function CounterContainer() {
-	return <Counter></Counter>;
-}
-
-function App() {
+function Counter2() {
+	console.log("Counter2 update");
+	const update = React.update();
+	function handleClick() {
+		count2++;
+		update();
+	}
 	return (
 		<div>
-			app
+			<div>
+				Counter2 - {count2} - <button onClick={handleClick}>click</button>
+			</div>
+		</div>
+	);
+}
+
+let app = 100;
+function App() {
+	console.log("app update");
+	const update = React.update();
+	function handleClick() {
+		app++;
+		update();
+	}
+	return (
+		<div>
+			app - {app} - <button onClick={handleClick}>click</button>
 			<div>hahah</div>
-			<Counter></Counter>
-			{/* <CounterContainer num={12}></CounterContainer> */}
+			<Counter1></Counter1>
+			<Counter2></Counter2>
 		</div>
 	);
 }
