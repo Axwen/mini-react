@@ -56,8 +56,8 @@ function workLoop(deadline) {
     let shouldYield = false
     while (!shouldYield && nextWorkOfUnit) {
         nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit)
-        if(wipRoot?.sibling?.type === nextWorkOfUnit?.type){
-            console.log('hit',wipRoot,nextWorkOfUnit)
+        if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
+            console.log('hit', wipRoot, nextWorkOfUnit)
             nextWorkOfUnit = undefined
         }
         shouldYield = deadline.timeRemaining() < 1
@@ -137,6 +137,8 @@ function updateProps(dom, props = {}, oldProps = {}) {
     })
 }
 function updateFunctionComponent(fiber) {
+    stateHooks = []
+    stateHooksIndex = 0
     wipFiber = fiber
     const { type, props } = fiber
     const children = [type(props)]
@@ -231,8 +233,49 @@ function performWorkOfUnit(fiber) {
 }
 requestIdleCallback(workLoop)
 
+let stateHooks = null;
+let stateHooksIndex = null;
+export function useState(initial) {
+
+    const currentFiber = wipFiber
+    const oldHook = currentFiber.alternate?.stateHooks[stateHooksIndex]
+
+    const stateHook = {
+        state: oldHook ? oldHook.state : initial,
+        queue: oldHook ? oldHook.queue : []
+    }
+    stateHook.queue.forEach((action) => {
+        stateHook.state = action(stateHook.state)
+    })
+    console.log(123)
+    stateHook.queue = []
+
+    stateHooksIndex++
+    stateHooks.push(stateHook)
+
+    currentFiber.stateHooks = stateHooks
+
+    const setState = (action) => {
+
+        const eagerState = typeof action === 'function' ? action(stateHook.state) : () => action
+        
+        if (eagerState === stateHook.state) {
+            return
+        }
+        stateHook.queue.push(typeof action === 'function' ? action : () => action)
+
+        wipRoot = {
+            ...currentFiber,
+            alternate: currentFiber
+        }
+        nextWorkOfUnit = wipRoot
+
+    }
+    return [stateHook.state, setState]
+}
 const React = {
     update,
+    useState,
     createElement,
     render
 }
