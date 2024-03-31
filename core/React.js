@@ -65,6 +65,10 @@ function workLoop(deadline) {
     if (!nextWorkOfUnit && wipRoot) {
         commitRoot()
     }
+    //useEffect改变之后执行
+    if (nextWorkOfUnit && !wipRoot) {
+        wipRoot = nextWorkOfUnit
+    }
 
     requestIdleCallback(workLoop)
 }
@@ -129,7 +133,7 @@ function commitWork(fiber) {
         if (fiber.dom) {
             fiberReturn.dom.append(fiber.dom)
         }
-    } else if (effectTag === 'UPDATE') {
+    } else if (effectTag === 'UPDATE' && fiber.dom) {
         updateProps(fiber.dom, fiber.props, fiber.alternate?.props)
     }
 
