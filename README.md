@@ -11,7 +11,7 @@
    - 虚拟DOM是对真实DOM描述的一种数据结构，将数据和DOM结构相关联起来，并且在SPA中相对精准的操作DOM
 2. Fiber
    - 概念: 将渲染工作`分割成块`,`可中断`,可根据`优先级`执行任务
-   - 可中断: [requestIdleCallback](https://developer.mozilla.org/zh-CN/docs/Web/API/Window/requestIdleCallback)
+   - API: [requestIdleCallback](https://developer.mozilla.org/zh-CN/docs/Web/API/Window/requestIdleCallback) (兼容及行为不一致原因,react内部自己实现)
         >   window.requestIdleCallback() 方法插入一个函数，这个函数将在浏览器空闲时期被调用。这使开发者能够在主事件循环上执行后台和低优先级工作，而不会影响延迟关键事件，如动画和输入响应。函数一般会按先进先调用的顺序执行，然而，如果回调函数指定了执行超时时间timeout，则有可能为了在超时前执行函数而打乱执行顺序。
    - 数据结构: **链表** ![alt text](./assets/fiber.png)
    - 创建的基本流程
@@ -34,9 +34,6 @@
 
 1. useState
     - 调用useState
-        1. 在当前的fiber上创建一个stateHooks,保存多个hooks的数据
-        2. 通过全局hookIndex获取对应stateHook,每个stateHook内部保存state初始化数据(如果存在老的stateHook,获取老的stateHook上的state)
-        3. 将生成一个队列保存后续setState的action,在下次useState的时候执行所有的setState的action，在给stateHook的state赋值
 
         ```js
         const currentFiber = wipFiber
@@ -57,9 +54,11 @@
         currentFiber.stateHooks = stateHooks
         ```
 
+        1. 在当前的fiber上创建一个stateHooks,保存多个hooks的数据
+        2. 通过全局hookIndex获取对应stateHook,每个stateHook内部保存state初始化数据(如果存在老的stateHook,获取老的stateHook上的state)
+        3. 将生成一个队列保存后续setState的action,在下次useState的时候执行所有的setState的action，在给stateHook的state赋值
+
     - 调用setState
-        1. 调用setState的action,获取结果,如果值和原来的值不一样,则将action推入stateHook的queue
-        2. **将当前的fiber丢给下一次执行的nextWorkOfUnit**,后续空闲时就会更新当前fiber,则会重新执行useState并执行stateHook中的queue,从而更新state
 
         ```js
             const setState = (action) => {
@@ -79,6 +78,11 @@
         }
         ```
 
+        1. 调用setState的action,获取结果,如果值和原来的值不一样,则将action推入stateHook的queue
+        2. **将当前的fiber丢给下一次执行的nextWorkOfUnit**,后续空闲时就会更新当前fiber,则会重新执行useState并执行stateHook中的queue,从而更新state
+
 2. useEffect
     - 调用useEffect
     - 监控依赖
+    - cleanup
+    - 更新
