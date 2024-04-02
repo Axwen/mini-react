@@ -83,6 +83,9 @@
 
 2. useEffect
     - 调用useEffect
-    - 监控依赖
-    - cleanup
-    - 更新
+        1. 收集依赖和callback
+        2. 同样通过effectHooks保存在当前的fiber上
+    - 初始渲染后执行
+        1. 放在统一commitWork完成后即dom更新完成后，执行fiber的effectHooks
+    - 依赖数据改变
+        1. 通过alternate指针获取老的effectHooks,对比新老hook上保存的deps数据是否有变化,有则执行callback
